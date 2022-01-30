@@ -2,10 +2,10 @@ provider "aws"{
     region="eu-north-1"
 }
 
-resource "aws_instance" "example" {
-    ami = "ami-092cce4a19b438926"
+resource "aws_launch_configuration" "example" {
+    image_id = "ami-092cce4a19b438926"
     instance_type = "t3.micro"
-    vpc_security_group_ids=[aws_security_group.instance.id]
+    security_groups=[aws_security_group.instance.id]
     user_data=<<-EOF
     #!/bin/bash
     echo "Hellow, world" >index.html
@@ -15,7 +15,23 @@ resource "aws_instance" "example" {
     tags = {
         Name ="Terraform-exapmle"
         }
-    
+    lifecycle {
+      create_before_destroy = true
+    }
+}
+
+
+
+resource "aws_autoscaling_group" "exapmple" {
+  launch_configuration = aws_launch_configuration.example.name
+  vpc_zone_identifier = data.aws_subnet_ids.default.ids
+  min_size = 2
+  max_size = 10
+  tag {
+    key = "Name"
+    value = "terraform-asg-example"
+    propagate_at_launch = true
+  }
 }
 
 resource "aws_security_group" "instance"{
@@ -37,4 +53,12 @@ variable "server_port" {
 output "public_ip" {
   value = aws_instance.example.public_ip
   description = "The public IP address of the web server"
+}
+
+data "aws_vpc" "default" {
+    default = true
+}
+data "aws_subnet_ids" "default" {
+    vpc_id = data.aws_vpc.default.id
+  
 }
